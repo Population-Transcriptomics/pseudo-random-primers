@@ -1,0 +1,244 @@
+```{r echo=FALSE}
+options(width=120)
+knitr::opts_knit$set(verbose = TRUE)
+knitr::opts_chunk$set(cache=TRUE)
+```
+
+Targeted reduction of Hemoglobin cDNAs
+======================================
+
+Configuration
+-------------
+
+```{r comment=NA}
+library(plyr)
+
+exportInEnv <- function(X) {
+  Name  <- X
+  Value <- get(X)
+  .Internal(Sys.setenv(Name, Value))
+  cat( paste0("export ", paste(Name, Value, sep='='), "\n"))
+}
+
+LIBRARY        <- 'NC22b'
+MOIRAI_USER    <- 'nanoCAGE2'
+MOIRAI_PROJECT <- 'Arnaud'
+GROUP_SHARED   <- '/osc-fs_home/scratch/gmtu'
+WORKDIR        <- '.'
+GENE_SYMBOLS   <- paste(GROUP_SHARED, 'annotation/homo_sapiens/gencode-14/gencode.v14.annotation.genes.bed', sep='/')
+ANNOTATION     <- paste(GROUP_SHARED, 'annotation/homo_sapiens/100712hg19/100712hg19', sep='/')
+PROCESSED_DATA <- dirname( system( paste( 'ls -d /osc-fs_home/scratch/moirai/'
+                                        , MOIRAI_USER
+                                        , '/project/'
+                                        , MOIRAI_PROJECT
+                                        , '/'
+                                        , LIBRARY
+                                        , '*/Moirai.config'
+                                        , sep='')
+                                 , intern=TRUE)[1])
+
+l_ply( c("LIBRARY", "MOIRAI_USER", "MOIRAI_PROJECT", "GROUP_SHARED"
+         , "WORKDIR", "GENE_SYMBOLS", "ANNOTATION", "PROCESSED_DATA")
+      , exportInEnv )
+```
+
+Moirai URL: `r paste0("http://moirai.gsc.riken.jp", PROCESSED_DATA, '/', grep('html',list.files(PROCESSED_DATA), value=TRUE)[1])`
+
+
+Count the reads
+---------------
+
+```{r bash_processing, engine="bash"}
+awk '/raw/ {print $3}' $PROCESSED_DATA/text/summary.txt |
+  /usr/lib/filo/stats |
+  grep 'Sum' |
+  cut -f2 -d':' |
+  tr -d '[:space:]' |
+  xargs -0 /usr/bin/printf " # %'d\n"
+
+grep raw $PROCESSED_DATA/text/summary.txt
+```
+
+
+Analysis with R
+---------------
+
+### Configuration
+
+```{r}
+library(oscR) #  See https://github.com/charles-plessy/oscR for oscR.
+if (compareVersion(sessionInfo()$otherPkgs$oscR$Version,'0.1.1') < 0) stop('Outdated version of oscR.')
+library(smallCAGEqc) # See https://github.com/charles-plessy/smallCAGEqc for smallCAGEqc.
+if (compareVersion(sessionInfo()$otherPkgs$smallCAGEqc$Version,'0.6.0') < 0) stop('Outdated version of smallCAGEqc')
+library(vegan)
+library(ggplot2)
+```
+
+### Load data
+
+```{r}
+l1 <- read.osc(paste(LIBRARY,'l1','gz',sep='.'), drop.coord=T, drop.norm=T)
+l2 <- read.osc(paste(LIBRARY,'l2','gz',sep='.'), drop.coord=T, drop.norm=T)
+
+colnames(l1) <- sub('raw.NC22b.','',colnames(l1))
+colnames(l2) <- sub('raw.NC22b.','',colnames(l2))
+
+colSums(l2)
+
+PSHb <- c('22_PSHb_A', '22_PSHb_B', '22_PSHb_C')
+RanN6    <- c('22_RanN6_A', '22_RanN6_B', '22_RanN6_C')
+
+```
+
+### Normalization number of read per sample : libs2.sub
+
+Libraries contain only very few reads tags. The smallest one has 3,191 counts.
+In order to make meaningful comparisons, all of them are subsapled to 3190 counts.
+
+```{r}
+l2.sub <- t(rrarefy(t(l2),3190))
+
+colSums(l2.sub)
+```
+
+### Moirai statistics
+
+Load the QC data produced by the Moirai workflow with which the libraries were
+processed.  Sort in the same way as the `l1` and `l2` tables, to allow for easy
+addition of columns. 
+
+```{r}
+libs <- loadLogs('moirai')
+libs <- libs[colnames(l1),]
+```
+
+### Number of clusters
+
+Count the number of unique L2 clusters per libraries after subsampling, and add
+this to the QC table.  Each subsampling will give a different result, but the
+mean result can be calculated by using the `rarefy` function at the same scale
+as the subsampling.
+
+```{r}
+libs["l2.sub"]     <- colSums(l2.sub > 0)
+libs["l2.sub.exp"] <- rarefy(t(l2), min(colSums(l2)))
+```
+
+### Richness
+
+Richness should also be calculated on the whole data.
+
+```{r}
+libs["r100.l2"] <- rarefy(t(l2),100)
+t.test(data=libs, r100.l2 ~ group)
+```
+
+```{r NC22.richness.normalized.100.l2, dev=c('png', 'svg')}
+boxplot(data=libs, r100.l2 ~ group, ylim=c(80,100), las=1)
+```
+
+### Hierarchical annotation
+
+Differences of sampling will not bias distort the distribution of reads between
+annotations, so the non-subsampled library is used here.
+
+```{r}
+annot.l2 <- read.table(paste(LIBRARY,'l2','annot',sep='.'), head=F, col.names=c('id', 'feature'), row.names=1)
+annot.l2 <- hierarchAnnot(annot.l2)
+
+libs <- cbind(libs, t(rowsum(l2,  annot.l2[,'class']))) 
+```
+
+### Gene symbols used normalisation data
+
+```{r}
+genesymbols <- read.table(paste(LIBRARY,'l2','genes',sep='.'), col.names=c("cluster","symbol"), stringsAsFactors=FALSE)
+rownames(genesymbols) <- genesymbols$cluster
+
+countSymbols <- function(X) length(unique(genesymbols[X > 0,'symbol']))
+
+libs[colnames(l2.sub),"genes.sub"] <- apply(l2.sub, 2, countSymbols)
+libs[colnames(l2),        "genes"] <- apply(l2,     2, countSymbols)
+```
+
+```{r, NC22.gene-count, dev=c('png', 'svg')}
+dotsize <- mean(libs$genes.sub) /150
+par(mar=c(7,10,2,30))
+p <- ggplot(libs, aes(x=group, y=genes.sub)) +
+stat_summary(fun.y=mean, fun.ymin=mean, fun.ymax=mean, 
+geom="crossbar", color="gray") +
+       geom_dotplot(aes(fill=group), binaxis='y', binwidth=1, 
+dotsize=dotsize, stackdir='center') +
+       	theme_bw() +
+	theme(axis.text.x = element_text(size=14)) +
+	theme(axis.text.y = element_text(size=14)) +
+	theme(axis.title.x = element_blank())+
+	theme(axis.title.y = element_text(size=14))+
+  ylim(1300,1600) +
+	ylab("Number of genes detected")
+p + theme(legend.position="none")
+```
+
+#### statistical analysis of gene count (with normalized data)
+
+```{r}
+t.test(data=libs, genes.sub ~ group)
+```
+
+
+### Analysis of the gene expressed in different sample with different primers - normalized data (l2.sub)
+
+```{r}
+l2_to_g2 <- function(l2) {
+  g2 <- rowsum(l2, genesymbols$symbol)
+  subset(g2, rowSums(g2) > 0)
+}
+
+g2.sub <- l2_to_g2(l2.sub)
+g2     <- l2_to_g2(l2)  
+G2 <- TPM(g2)
+
+libs$genes.r <- rarefy(t(g2), 3190)[rownames(libs)]
+
+t.test(data=libs, genes.r ~ group)
+```
+
+```{r}
+G2mean <- function(TABLE)
+  data.frame( RanN6    = TPM(rowSums(TABLE[,RanN6]))
+            , PS_Hb = TPM(rowSums(TABLE[,PSHb])))
+
+G2.sub.mean <- G2mean(g2.sub)
+G2.mean     <- G2mean(g2)
+```
+
+```{r}
+head(G2.sub.mean[order(G2.sub.mean$RanN6, decreasing=TRUE),], 30)
+```
+
+```{r}
+head(G2.sub.mean[order(G2.sub.mean$PS_Hb, decreasing=TRUE),], 30)
+```
+
+### Gene list on normalized data (table l2.sub)
+```{r}
+RanN6_genelist.sub <- listSymbols(rownames(subset(G2.sub.mean, RanN6>0)))
+PSHb_genelist.sub <- listSymbols(rownames(subset(G2.sub.mean, PS_Hb>0)))
+```
+
+```{r}
+genelist <- listSymbols(rownames(g2))
+```
+
+```{r}
+write.table(genelist, 'NC22.genelist.txt', sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+```
+
+
+### Haemoglobin barplot
+
+```{r, barplot, dev=c('png', 'svg')}
+par(mar=c(2,2,2,2))
+barplot(t(G2[grep('^HB[AB]', rownames(g2), value=T),]), beside=T, ylab='Normalised expression value (cpm).', col=c("gray50","gray50", "gray50", "gray90", "gray90", "gray90"))
+legend("topleft", legend=c("RanN6", "PS_Hb"), fill=c("gray90", "gray50"))
+```

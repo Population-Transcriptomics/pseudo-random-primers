@@ -1,0 +1,134 @@
+---
+output: 
+  html_document: 
+    keep_md: yes
+---
+```{r echo=FALSE}
+options(width=120)
+knitr::opts_knit$set(verbose = TRUE)
+knitr::opts_chunk$set(cache=TRUE)
+```
+Statistic tests
+======================================
+
+
+### statistic tests about sequences coming from ribosomal RNA
+
+Regarding the PS and RanN6 set, we use a paired t.test as the the results come from 3 independents experiments.
+
+```{r}
+rDNA <- read.table('rDNA.csv', sep=",", head=T)
+rDNA
+```
+
+```{r}
+t.test(rDNA$HeLa_PS, rDNA$HeLa_RanN6, paired = T)
+```
+
+```{r}
+t.test(rDNA$THP1_PS, rDNA$THP1_RanN6, paired = T)
+```
+
+```{r}
+rDNA_40N6 <- read.table('rDNA_40N6.csv', sep=",", head=T)
+rDNA_40N6
+```
+
+Regarding the 40N6 set, we can not use the paired test as only one experiment has been performed. Thus, we use the 3 replicats of 1 experiment.
+
+```{r}
+t.test(rDNA_40N6$HeLa_RanN6, rDNA_40N6$HeLa_40N6)
+```
+
+```{r}
+t.test(rDNA_40N6$HeLa_PS, rDNA_40N6$HeLa_40N6)
+```
+
+```{r}
+t.test(rDNA_40N6$THP1_RanN6, rDNA_40N6$THP1_40N6)
+```
+
+```{r}
+t.test(rDNA_40N6$THP1_PS, rDNA_40N6$THP1_40N6)
+```
+
+### statistic tests about sequences coming from artefacts
+
+Regarding the PS and RanN6 set, we use a paired t.test as the the results come from 3 independents experiments.
+
+```{r}
+artefact <- read.table('artefacts.csv', sep=",", head=T)
+artefact
+```
+
+```{r}
+t.test(artefact$HeLa_PS, artefact$HeLa_RanN6, paired = T)
+```
+
+```{r}
+t.test(artefact$THP1_PS, artefact$THP1_RanN6, paired = T)
+```
+
+Regarding the 40N6 set, we can not use the paired test as only one experiment has been performed. Thus, we use the 3 replicats of 1 experiment.
+
+```{r}
+artefact_40N6 <- read.table('artefact_40N6.csv', sep=",", head=T)
+artefact_40N6
+```
+
+```{r}
+t.test(artefact_40N6$HeLa_RanN6, artefact_40N6$HeLa_40N6)
+```
+
+```{r}
+t.test(artefact_40N6$HeLa_PS, artefact_40N6$HeLa_40N6)
+```
+
+```{r}
+t.test(artefact_40N6$THP1_RanN6, artefact_40N6$THP1_40N6)
+```
+
+```{r}
+t.test(artefact_40N6$THP1_PS, artefact_40N6$THP1_40N6)
+```
+
+
+### statistic tests about the numbers of genes detected
+
+Regarding the PS and RanN6 set, we use a paired t.test as the the results come from 3 independents experiments.
+
+```{r}
+genes <- read.table('genes.csv', sep=",", head=T)
+genes
+```
+
+```{r}
+t.test(genes$HeLa_PS, genes$HeLa_RanN6, paired = T)
+```
+
+```{r}
+t.test(genes$THP1_PS, genes$THP1_RanN6, paired = T)
+```
+
+Regarding the 40N6 set, we can not use the paired test as only one experiment has been performed. Thus, we use the 3 replicats of 1 experiment.
+
+```{r}
+genes_40N6 <- read.table('genes_40N6.csv', sep=",", head=T)
+genes_40N6
+```
+
+```{r}
+t.test(genes_40N6$HeLa_RanN6, genes_40N6$HeLa_40N6)
+```
+
+```{r}
+t.test(genes_40N6$HeLa_PS, genes_40N6$HeLa_40N6)
+```
+
+```{r}
+t.test(genes_40N6$THP1_RanN6, genes_40N6$THP1_40N6)
+```
+
+```{r}
+t.test(genes_40N6$THP1_PS, genes_40N6$THP1_40N6)
+```
