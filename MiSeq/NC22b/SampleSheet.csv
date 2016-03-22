@@ -1,0 +1,26 @@
+[Header]
+IEMFileVersion,4
+Investigator Name,Ophelie-KATO
+Experiment Name,NC22b
+Date,11/5/2014
+Workflow,GenerateFASTQ
+Application,FASTQ Only
+Assay,TruSeq LT
+Description,
+Chemistry,Default
+
+[Reads]
+48
+21
+
+[Settings]
+ReverseComplement,0
+
+[Data]
+Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,Sample_Project,Description
+1,,,,A001,ATCACG,,
+2,,,,A002,CGATGT,,
+3,,,,A003,TTAGGC,,
+4,,,,A004,TGACCA,,
+5,,,,A005,ACAGTG,,
+6,,,,A006,GCCAAT,,
