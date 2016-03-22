@@ -1,5 +1,14 @@
 ## Targeted reduction of highly abundant transcripts with pseudo-random primers
 
+These are supplemental files related to our manuscript to be published
+soon in BioTechniques ([preprint available on bioRxiv](http://dx.doi.org/10.1101/027805)).
+
+This repository only contains light files.  In particular FASTQ and BAM files
+are available for download at <http://genome.gsc.riken.jp/plessy-20160322/plessy-20160322.tar.gz>.
+
+The branch "BioTechniques-2016" contains the supplemental data in its state at
+the time of publication, but in the other branches, the files may evolve.
+
 ### Scripts and programs used in the data analysis:
 
 #### Supplemental file 3
