@@ -6,89 +6,79 @@ knitr::opts_chunk$set(cache=TRUE)
 
 Analyze of the second experiment: NC12
 ======================================
-### configuration
 
-```{r comment=NA}
-library(plyr)
+Cluster and annotate in the shell (not in R)
+--------------------------------------------
 
-exportInEnv <- function(X) {
-  Name  <- X
-  Value <- get(X)
-  .Internal(Sys.setenv(Name, Value))
-  cat( paste0("export ", paste(Name, Value, sep='='), "\n"))
+```{r engine="bash"}
+LIBRARY=NC12_1
+BAMFILES=../Moirai/NC12_1.CAGEscan_short-reads.20150629125015/properly_paired_rmdup/*bam
+
+level1.py -o /dev/stdout -f 66 -F 516 $BAMFILES |
+  bgzip > $LIBRARY.l1.gz
+cat <(zgrep \# -A1 $LIBRARY.l1.gz) <(zgrep -v \# $LIBRARY.l1.gz | sed '1d' |
+  sort --field-separator $'\t' -k2.4,2n -k 2.4,2.4 -k3,3n -k4,4n -k5,5) |
+  bgzip |
+  sponge $LIBRARY.l1.gz
+level2.py -t 0 -o $LIBRARY.l2.gz $LIBRARY.l1.gz
+
+function osc2bed {
+  zcat $1 |
+    grep -v \# |
+    sed 1d |
+    awk '{OFS="\t"}{print $2, $3, $4, "l1", "1000", $5}'
 }
 
-LIBRARY        <- 'NC12_1'
-MOIRAI_USER    <- 'nanoCAGE2'
-MOIRAI_PROJECT <- 'Arnaud'
-GROUP_SHARED   <- '/osc-fs_home/scratch/gmtu'
-WORKDIR        <- '.'
-GENE_SYMBOLS   <- paste(GROUP_SHARED, 'annotation/homo_sapiens/gencode-14/gencode.v14.annotation.genes.bed', sep='/')
-ANNOTATION     <- paste(GROUP_SHARED, 'annotation/homo_sapiens/100712hg19/100712hg19', sep='/')
-PROCESSED_DATA <- dirname( system( paste( 'ls -d /osc-fs_home/scratch/moirai/'
-                                        , MOIRAI_USER
-                                        , '/project/'
-                                        , MOIRAI_PROJECT
-                                        , '/'
-                                        , LIBRARY
-                                        , '*/Moirai.config'
-                                        , sep='')
-                                 , intern=TRUE)[1])
+function bed2annot {
+  bedtools intersect -a $1 -b ../annotation/annot.bed -s -loj |
+    awk '{OFS="\t"}{print $1":"$2"-"$3$6,$10}' | 
+    bedtools groupby -g 1 -c 2 -o collapse
+}
 
-l_ply( c("LIBRARY", "MOIRAI_USER", "MOIRAI_PROJECT", "GROUP_SHARED"
-         , "WORKDIR", "GENE_SYMBOLS", "ANNOTATION", "PROCESSED_DATA")
-      , exportInEnv )
-```
+function bed2symbols {
+  bedtools intersect -a $1 -b ../annotation/gencode.v14.annotation.genes.bed -s -loj |
+    awk '{OFS="\t"}{print $1":"$2"-"$3$6,$10}' | 
+    bedtools groupby -g 1 -c 2 -o distinct
+}
 
-Count the reads
----------------
-
-```{r engine="bash"}
-awk '/raw/ {print $3}' $PROCESSED_DATA/text/summary.txt |
-  /usr/lib/filo/stats |
-  grep 'Sum' |
-  cut -f2 -d':' |
-  tr -d '[:space:]' |
-  xargs -0 /usr/bin/printf " # %'d\n"
-```
-
-```{r engine="bash"}
-grep raw $PROCESSED_DATA/text/summary.txt
+osc2bed $LIBRARY.l2.gz | tee $LIBRARY.l2.bed | bed2annot - > $LIBRARY.l2.annot
+bed2symbols $LIBRARY.l2.bed > $LIBRARY.l2.genes
 ```
 
 Analysis with R
 ---------------
 
 ### Configuration
+
 ```{r}
-library(oscR) #  See https://github.com/charles-plessy/oscR for oscR.
-if (compareVersion(sessionInfo()$otherPkgs$oscR$Version,'0.1.1') < 0) stop('Outdated version of oscR.')
-
+library(oscR)        #  See https://github.com/charles-plessy/oscR for oscR.
 library(smallCAGEqc) # See https://github.com/charles-plessy/smallCAGEqc for smallCAGEqc.
-if (compareVersion(sessionInfo()$otherPkgs$smallCAGEqc$Version,'0.6.0') < 0) stop('Outdated version of smallCAGEqc')
-
 library(vegan)
 library(ggplot2)
 
+stopifnot(
+    packageVersion("oscR") >= "0.1.1"
+  , packageVersion("smallCAGEqc") > "0.10.0"
+)
+
+LIBRARY <- "NC12_1"
 ```
 
 ### Load data
 
 ```{r}
 l2_NC12 <- read.osc(paste(LIBRARY,'l2','gz',sep='.'), drop.coord=T, drop.norm=T)
-
 colnames(l2_NC12) <- sub('raw.NC12_1', 'NC12', colnames(l2_NC12))
-
 colSums(l2_NC12)
-
 ```
 
 ### Normalization number of read per sample: l2.sub ; libs$genes.sub
+
 In all the 3 libraries used, one contain only few reads tags. The smallest one has 8,708 counts. In order to make meaningful comparisons, all of them are subsapled to 8700 counts.
 
 ```{r}
+set.seed(1)
 l2.sub1 <- t(rrarefy(t(l2_NC12),min(8700)))
-
 colSums(l2.sub1)
 ```
 
@@ -97,7 +87,7 @@ colSums(l2.sub1)
 Load the QC data produced by the Moirai workflow with which the libraries were processed. Sort in the same way as the l1 and l2 tables, to allow for easy addition of columns.
 
 ```{r}
-libs <- loadLogs('moirai')
+libs <- loadMoiraiStats(multiplex = "NC12_1.multiplex.txt", summary = "../Moirai/NC12_1.CAGEscan_short-reads.20150629125015/text/summary.txt", pipeline = "CAGEscan_short-reads")
 rownames(libs) <- sub('HeLa', 'NC12.HeLa', rownames(libs))
 rownames(libs) <- sub('THP1', 'NC12.THP1', rownames(libs))
 ```
@@ -120,7 +110,6 @@ Richness should also be calculated on the whole data.
 
 ```{r}
 libs["r100.l2"] <- rarefy(t(l2_NC12),100)
-
 boxplot(data=libs, r100.l2 ~ group, ylim=c(92,100), las=1)
 ```
 
@@ -159,6 +148,7 @@ libs[colnames(l2.sub1),"genes.sub1"] <- (countSymbols.sub1)
 ```
 
 ### Table record
+
 save the different tables produced for later analysis
 
 ```{r}

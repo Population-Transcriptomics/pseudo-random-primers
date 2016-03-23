@@ -10,55 +10,44 @@ Targeted reduction of Hemoglobin cDNAs
 Configuration
 -------------
 
-```{r comment=NA}
-library(plyr)
 
-exportInEnv <- function(X) {
-  Name  <- X
-  Value <- get(X)
-  .Internal(Sys.setenv(Name, Value))
-  cat( paste0("export ", paste(Name, Value, sep='='), "\n"))
+Cluster and annotate in the shell (not in R)
+--------------------------------------------
+
+```{r engine="bash"}
+LIBRARY=NC22b
+BAMFILES=../Moirai/NC22b.CAGEscan_short-reads.20150625152335/properly_paired_rmdup/*bam
+
+level1.py -o /dev/stdout -f 66 -F 516 $BAMFILES |
+  bgzip > $LIBRARY.l1.gz
+cat <(zgrep \# -A1 $LIBRARY.l1.gz) <(zgrep -v \# $LIBRARY.l1.gz | sed '1d' |
+  sort --field-separator $'\t' -k2.4,2n -k 2.4,2.4 -k3,3n -k4,4n -k5,5) |
+  bgzip |
+  sponge $LIBRARY.l1.gz
+level2.py -t 0 -o $LIBRARY.l2.gz $LIBRARY.l1.gz
+
+function osc2bed {
+  zcat $1 |
+    grep -v \# |
+    sed 1d |
+    awk '{OFS="\t"}{print $2, $3, $4, "l1", "1000", $5}'
 }
 
-LIBRARY        <- 'NC22b'
-MOIRAI_USER    <- 'nanoCAGE2'
-MOIRAI_PROJECT <- 'Arnaud'
-GROUP_SHARED   <- '/osc-fs_home/scratch/gmtu'
-WORKDIR        <- '.'
-GENE_SYMBOLS   <- paste(GROUP_SHARED, 'annotation/homo_sapiens/gencode-14/gencode.v14.annotation.genes.bed', sep='/')
-ANNOTATION     <- paste(GROUP_SHARED, 'annotation/homo_sapiens/100712hg19/100712hg19', sep='/')
-PROCESSED_DATA <- dirname( system( paste( 'ls -d /osc-fs_home/scratch/moirai/'
-                                        , MOIRAI_USER
-                                        , '/project/'
-                                        , MOIRAI_PROJECT
-                                        , '/'
-                                        , LIBRARY
-                                        , '*/Moirai.config'
-                                        , sep='')
-                                 , intern=TRUE)[1])
+function bed2annot {
+  bedtools intersect -a $1 -b ../annotation/annot.bed -s -loj |
+    awk '{OFS="\t"}{print $1":"$2"-"$3$6,$10}' | 
+    bedtools groupby -g 1 -c 2 -o collapse
+}
 
-l_ply( c("LIBRARY", "MOIRAI_USER", "MOIRAI_PROJECT", "GROUP_SHARED"
-         , "WORKDIR", "GENE_SYMBOLS", "ANNOTATION", "PROCESSED_DATA")
-      , exportInEnv )
+function bed2symbols {
+  bedtools intersect -a $1 -b ../annotation/gencode.v14.annotation.genes.bed -s -loj |
+    awk '{OFS="\t"}{print $1":"$2"-"$3$6,$10}' | 
+    bedtools groupby -g 1 -c 2 -o distinct
+}
+
+osc2bed $LIBRARY.l2.gz | tee $LIBRARY.l2.bed | bed2annot - > $LIBRARY.l2.annot
+bed2symbols $LIBRARY.l2.bed > $LIBRARY.l2.genes
 ```
-
-Moirai URL: `r paste0("http://moirai.gsc.riken.jp", PROCESSED_DATA, '/', grep('html',list.files(PROCESSED_DATA), value=TRUE)[1])`
-
-
-Count the reads
----------------
-
-```{r bash_processing, engine="bash"}
-awk '/raw/ {print $3}' $PROCESSED_DATA/text/summary.txt |
-  /usr/lib/filo/stats |
-  grep 'Sum' |
-  cut -f2 -d':' |
-  tr -d '[:space:]' |
-  xargs -0 /usr/bin/printf " # %'d\n"
-
-grep raw $PROCESSED_DATA/text/summary.txt
-```
-
 
 Analysis with R
 ---------------
@@ -66,12 +55,18 @@ Analysis with R
 ### Configuration
 
 ```{r}
-library(oscR) #  See https://github.com/charles-plessy/oscR for oscR.
-if (compareVersion(sessionInfo()$otherPkgs$oscR$Version,'0.1.1') < 0) stop('Outdated version of oscR.')
+library(oscR)        #  See https://github.com/charles-plessy/oscR for oscR.
 library(smallCAGEqc) # See https://github.com/charles-plessy/smallCAGEqc for smallCAGEqc.
-if (compareVersion(sessionInfo()$otherPkgs$smallCAGEqc$Version,'0.6.0') < 0) stop('Outdated version of smallCAGEqc')
 library(vegan)
 library(ggplot2)
+library(pvclust)
+
+stopifnot(
+    packageVersion("oscR") >= "0.1.1"
+  , packageVersion("smallCAGEqc") > "0.10.0"
+)
+
+LIBRARY <- "NC22b"
 ```
 
 ### Load data
@@ -87,7 +82,6 @@ colSums(l2)
 
 PSHb <- c('22_PSHb_A', '22_PSHb_B', '22_PSHb_C')
 RanN6    <- c('22_RanN6_A', '22_RanN6_B', '22_RanN6_C')
-
 ```
 
 ### Normalization number of read per sample : libs2.sub
@@ -96,8 +90,8 @@ Libraries contain only very few reads tags. The smallest one has 3,191 counts.
 In order to make meaningful comparisons, all of them are subsapled to 3190 counts.
 
 ```{r}
+set.seed(1)
 l2.sub <- t(rrarefy(t(l2),3190))
-
 colSums(l2.sub)
 ```
 
@@ -108,7 +102,7 @@ processed.  Sort in the same way as the `l1` and `l2` tables, to allow for easy
 addition of columns. 
 
 ```{r}
-libs <- loadLogs('moirai')
+libs <- loadMoiraiStats(multiplex = "NC22b.multiplex.txt", summary = "../Moirai/NC22b.CAGEscan_short-reads.20150625152335/text/summary.txt", pipeline = "CAGEscan_short-reads")
 libs <- libs[colnames(l1),]
 ```
 
@@ -191,7 +185,7 @@ t.test(data=libs, genes.sub ~ group)
 ```{r}
 l2_to_g2 <- function(l2) {
   g2 <- rowsum(l2, genesymbols$symbol)
-  subset(g2, rowSums(g2) > 0)
+  as.data.frame(subset(g2, rowSums(g2) > 0))
 }
 
 g2.sub <- l2_to_g2(l2.sub)
@@ -205,8 +199,8 @@ t.test(data=libs, genes.r ~ group)
 
 ```{r}
 G2mean <- function(TABLE)
-  data.frame( RanN6    = TPM(rowSums(TABLE[,RanN6]))
-            , PS_Hb = TPM(rowSums(TABLE[,PSHb])))
+  TPM(data.frame( RanN6    = rowSums(TABLE[,RanN6])
+                , PS_Hb    = rowSums(TABLE[,PSHb] )))
 
 G2.sub.mean <- G2mean(g2.sub)
 G2.mean     <- G2mean(g2)

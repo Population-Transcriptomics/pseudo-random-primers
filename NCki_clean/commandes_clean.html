@@ -63,92 +63,65 @@ img {
 
 <div id="analyze-of-the-first-experiment-ncms10058" class="section level1">
 <h1>Analyze of the first experiment: NCms10058</h1>
-<div id="configuration" class="section level3">
-<h3>Configuration</h3>
-<pre class="r"><code>library(plyr)
+<div id="cluster-and-annotate-in-the-shell-not-in-r" class="section level2">
+<h2>Cluster and annotate in the shell (not in R)</h2>
+<pre class="bash"><code>LIBRARY=NCms10058_1
+BAMFILES=../Moirai/NCms10058_1.CAGEscan_short-reads.20150625154711/properly_paired_rmdup/*bam
 
-exportInEnv &lt;- function(X) {
-  Name  &lt;- X
-  Value &lt;- get(X)
-  .Internal(Sys.setenv(Name, Value))
-  cat( paste0(&quot;export &quot;, paste(Name, Value, sep='='), &quot;\n&quot;))
+level1.py -o /dev/stdout -f 66 -F 516 $BAMFILES |
+  bgzip &gt; $LIBRARY.l1.gz
+cat &lt;(zgrep \# -A1 $LIBRARY.l1.gz) &lt;(zgrep -v \# $LIBRARY.l1.gz | sed '1d' |
+  sort --field-separator $'\t' -k2.4,2n -k 2.4,2.4 -k3,3n -k4,4n -k5,5) |
+  bgzip |
+  sponge $LIBRARY.l1.gz
+level2.py -t 0 -o $LIBRARY.l2.gz $LIBRARY.l1.gz
+
+function osc2bed {
+  zcat $1 |
+    grep -v \# |
+    sed 1d |
+    awk '{OFS=&quot;\t&quot;}{print $2, $3, $4, &quot;l1&quot;, &quot;1000&quot;, $5}'
 }
 
-LIBRARY        &lt;- 'NCms10058_1'
-MOIRAI_USER    &lt;- 'nanoCAGE2'
-MOIRAI_PROJECT &lt;- 'Arnaud'
-GROUP_SHARED   &lt;- '/osc-fs_home/scratch/gmtu'
-WORKDIR        &lt;- '.'
-GENE_SYMBOLS   &lt;- paste(GROUP_SHARED, 'annotation/homo_sapiens/gencode-14/gencode.v14.annotation.genes.bed', sep='/')
-ANNOTATION     &lt;- paste(GROUP_SHARED, 'annotation/homo_sapiens/100712hg19/100712hg19', sep='/')
-PROCESSED_DATA &lt;- dirname( system( paste( 'ls -d /osc-fs_home/scratch/moirai/'
-                                        , MOIRAI_USER
-                                        , '/project/'
-                                        , MOIRAI_PROJECT
-                                        , '/'
-                                        , LIBRARY
-                                        , '*/Moirai.config'
-                                        , sep='')
-                                 , intern=TRUE)[1])
+function bed2annot {
+  bedtools intersect -a $1 -b ../annotation/annot.bed -s -loj |
+    awk '{OFS=&quot;\t&quot;}{print $1&quot;:&quot;$2&quot;-&quot;$3$6,$10}' | 
+    bedtools groupby -g 1 -c 2 -o collapse
+}
 
-l_ply( c(&quot;LIBRARY&quot;, &quot;MOIRAI_USER&quot;, &quot;MOIRAI_PROJECT&quot;, &quot;GROUP_SHARED&quot;
-         , &quot;WORKDIR&quot;, &quot;GENE_SYMBOLS&quot;, &quot;ANNOTATION&quot;, &quot;PROCESSED_DATA&quot;)
-      , exportInEnv )</code></pre>
-<pre><code>export LIBRARY=NCms10058_1
-export MOIRAI_USER=nanoCAGE2
-export MOIRAI_PROJECT=Arnaud
-export GROUP_SHARED=/osc-fs_home/scratch/gmtu
-export WORKDIR=.
-export GENE_SYMBOLS=/osc-fs_home/scratch/gmtu/annotation/homo_sapiens/gencode-14/gencode.v14.annotation.genes.bed
-export ANNOTATION=/osc-fs_home/scratch/gmtu/annotation/homo_sapiens/100712hg19/100712hg19
-export PROCESSED_DATA=/osc-fs_home/scratch/moirai/nanoCAGE2/project/Arnaud/NCms10058_1.CAGEscan_short-reads.20150625154711</code></pre>
-</div>
-<div id="count-the-reads" class="section level2">
-<h2>Count the reads</h2>
-<pre class="bash"><code>awk '/raw/ {print $3}' $PROCESSED_DATA/text/summary.txt |
-  /usr/lib/filo/stats |
-  grep 'Sum' |
-  cut -f2 -d':' |
-  tr -d '[:space:]' |
-  xargs -0 /usr/bin/printf &quot; # %'d\n&quot;</code></pre>
-<pre><code>##  # 3608777</code></pre>
-<pre class="bash"><code>grep raw $PROCESSED_DATA/text/summary.txt</code></pre>
-<pre><code>## NCms10058_1.ACAGTG.R1    raw 95519
-## NCms10058_1.ACTTGA.R1    raw 76278
-## NCms10058_1.ATCACG.R1    raw 53374
-## NCms10058_1.CAGATC.R1    raw 103408
-## NCms10058_1.CGATGT.R1    raw 73164
-## NCms10058_1.CTTGTA.R1    raw 134779
-## NCms10058_1.GATCAG.R1    raw 95648
-## NCms10058_1.GCCAAT.R1    raw 76012
-## NCms10058_1.GGCTAC.R1    raw 56348
-## NCms10058_1.TAGCTT.R1    raw 54492
-## NCms10058_1.TGACCA.R1    raw 63262
-## NCms10058_1.TTAGGC.R1    raw 95230
-## NCms10058_1.Undetermined.R1  raw 2631263</code></pre>
+function bed2symbols {
+  bedtools intersect -a $1 -b ../annotation/gencode.v14.annotation.genes.bed -s -loj |
+    awk '{OFS=&quot;\t&quot;}{print $1&quot;:&quot;$2&quot;-&quot;$3$6,$10}' | 
+    bedtools groupby -g 1 -c 2 -o distinct
+}
+
+osc2bed $LIBRARY.l2.gz | tee $LIBRARY.l2.bed | bed2annot - &gt; $LIBRARY.l2.annot
+bed2symbols $LIBRARY.l2.bed &gt; $LIBRARY.l2.genes</code></pre>
+<pre><code>## Opening NCms10058_1.l1.gz</code></pre>
 </div>
 <div id="analysis-with-r" class="section level2">
 <h2>Analysis with R</h2>
-<div id="configuration-1" class="section level3">
+<div id="configuration" class="section level3">
 <h3>Configuration</h3>
-<pre class="r"><code>library(oscR) #  See https://github.com/charles-plessy/oscR for oscR.
-if (compareVersion(sessionInfo()$otherPkgs$oscR$Version,'0.1.1') &lt; 0) stop('Outdated version of oscR.')
-
+<pre class="r"><code>library(oscR)        #  See https://github.com/charles-plessy/oscR for oscR.
 library(smallCAGEqc) # See https://github.com/charles-plessy/smallCAGEqc for smallCAGEqc.
-if (compareVersion(sessionInfo()$otherPkgs$smallCAGEqc$Version,'0.6.0') &lt; 0) stop('Outdated version of smallCAGEqc')
-
 library(vegan)</code></pre>
 <pre><code>## Loading required package: permute
 ## Loading required package: lattice
 ## This is vegan 2.0-10</code></pre>
-<pre class="r"><code>library(ggplot2)</code></pre>
+<pre class="r"><code>library(ggplot2)
+
+stopifnot(
+    packageVersion(&quot;oscR&quot;) &gt;= &quot;0.1.1&quot;
+  , packageVersion(&quot;smallCAGEqc&quot;) &gt; &quot;0.10.0&quot;
+)
+
+LIBRARY &lt;- &quot;NCms10058_1&quot;</code></pre>
 </div>
 <div id="load-data" class="section level3">
 <h3>Load data</h3>
 <pre class="r"><code>l2_NCki &lt;- read.osc(paste(LIBRARY,'l2','gz',sep='.'), drop.coord=T, drop.norm=T)
-
 colnames(l2_NCki) &lt;- sub('raw.NCms10058_1.','NCki_',colnames(l2_NCki))
-
 colSums(l2_NCki)  </code></pre>
 <pre><code>##    NCki_HeLa_PS_A    NCki_HeLa_PS_B    NCki_HeLa_PS_C NCki_HeLa_RanN6_A NCki_HeLa_RanN6_B NCki_HeLa_RanN6_C 
 ##             11800             13969             22764             14137             13556             10430 
@@ -158,8 +131,8 @@ colSums(l2_NCki)  </code></pre>
 <div id="normalization-number-of-read-per-sample-l2.sub-libsgenes.sub" class="section level3">
 <h3>Normalization number of read per sample : l2.sub ; libs$genes.sub</h3>
 <p>In all the 3 libraries used, one contain only few reads tags. The smallest one has 8,708 counts. In order to make meaningful comparisons, all of them are subsapled to 8700 counts.</p>
-<pre class="r"><code>l2.sub1 &lt;- t(rrarefy(t(l2_NCki),min(8700)))
-
+<pre class="r"><code>set.seed(1)
+l2.sub1 &lt;- t(rrarefy(t(l2_NCki),min(8700)))
 colSums(l2.sub1)</code></pre>
 <pre><code>##    NCki_HeLa_PS_A    NCki_HeLa_PS_B    NCki_HeLa_PS_C NCki_HeLa_RanN6_A NCki_HeLa_RanN6_B NCki_HeLa_RanN6_C 
 ##              8700              8700              8700              8700              8700              8700 
@@ -169,7 +142,7 @@ colSums(l2.sub1)</code></pre>
 <div id="moirai-statistics" class="section level3">
 <h3>Moirai statistics</h3>
 <p>Load the QC data produced by the Moirai workflow with which the libraries were processed. Sort in the same way as the l1 and l2 tables, to allow for easy addition of columns.</p>
-<pre class="r"><code>libs &lt;- loadLogs('moirai')</code></pre>
+<pre class="r"><code>libs &lt;- loadMoiraiStats(multiplex = &quot;NCms10058_1.multiplex.txt&quot;, summary = &quot;../Moirai/NCms10058_1.CAGEscan_short-reads.20150625154711/text/summary.txt&quot;, pipeline = &quot;CAGEscan_short-reads&quot;)</code></pre>
 </div>
 <div id="number-of-clusters" class="section level3">
 <h3>Number of clusters</h3>
@@ -181,7 +154,6 @@ libs[&quot;l2.sub1.exp&quot;] &lt;- rarefy(t(l2_NCki), min(colSums(l2_NCki)))</c
 <h3>Richness</h3>
 <p>Richness should also be calculated on the whole data.</p>
 <pre class="r"><code>libs[&quot;r100.l2&quot;] &lt;- rarefy(t(l2_NCki),100)
-
 boxplot(data=libs, r100.l2 ~ group, ylim=c(92,100), las=1)</code></pre>
 <p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAPACAMAAADDuCPrAAAC9FBMVEUAAAABAQECAgIDAwMEBAQFBQUGBgYHBwcICAgJCQkKCgoLCwsMDAwNDQ0ODg4PDw8QEBARERESEhITExMUFBQVFRUWFhYXFxcYGBgZGRkaGhobGxscHBwdHR0eHh4fHx8gICAhISEiIiIjIyMkJCQlJSUmJiYnJycoKCgpKSkqKiorKyssLCwtLS0uLi4vLy8wMDAxMTEyMjIzMzM0NDQ1NTU2NjY3Nzc4ODg5OTk6Ojo7Ozs8PDw9PT0+Pj4/Pz9AQEBBQUFCQkJDQ0NERERFRUVGRkZHR0dISEhJSUlKSkpLS0tMTExNTU1OTk5PT09QUFBRUVFSUlJTU1NUVFRVVVVWVlZXV1dYWFhZWVlaWlpbW1tcXFxdXV1eXl5fX19gYGBhYWFiYmJjY2NkZGRlZWVmZmZnZ2doaGhpaWlqampra2tsbGxtbW1ubm5vb29wcHBxcXFzc3N0dHR1dXV2dnZ3d3d4eHh5eXl6enp7e3t8fHx9fX1+fn5/f3+AgICBgYGCgoKDg4OEhISFhYWGhoaHh4eIiIiJiYmKioqLi4uMjIyNjY2Ojo6Pj4+QkJCRkZGSkpKTk5OUlJSVlZWWlpaXl5eZmZmampqbm5ucnJydnZ2enp6fn5+goKChoaGioqKjo6OlpaWmpqanp6eoqKipqamqqqqrq6usrKytra2urq6vr6+wsLCxsbGysrKzs7O0tLS1tbW2tra4uLi5ubm6urq7u7u8vLy9vb2+vr6/v7/AwMDBwcHCwsLDw8PExMTFxcXGxsbHx8fIyMjJycnKysrLy8vMzMzNzc3Ozs7Pz8/Q0NDR0dHS0tLT09PU1NTV1dXW1tbX19fY2NjZ2dna2trb29vc3Nzd3d3e3t7f39/g4ODh4eHi4uLj4+Pk5OTl5eXm5ubn5+fo6Ojp6enq6urr6+vs7Ozt7e3u7u7v7+/w8PDx8fHy8vLz8/P09PT19fX29vb39/f4+Pj5+fn6+vr7+/v8/Pz9/f3+/v7///+wvKWCAAAACXBIWXMAAB2HAAAdhwGP5fFlAAAgAElEQVR4nO3dfaBcZX3g8V/eQ5pCIYEA5cXAhoZqsYgURREFShFsKd0lAtrWriURqyAsKNTuWl8oSFWyVgGrdVuqVWtEqtYX1hpLUQSkukiLCpTWooISTQBNcuefnbl3bpIbJjD58dw7c+7z+fzBee4zmZNz78n5MmdmztxoAZASg94AgKYSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBrqgN57yWsBSnnjhsKNGuqAXhQA5fxN4UYNdUDPjxddBlDG4fFXhRs15AF9+6A3AZg2XiqgADkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJwxzQf41t17XpL39t3zn7HP+enz7OzBMSUKCcYQ7o67cN6P1Hd6/dP+LfdjjzxAQUKGeIA3rnbtsE9OEjI+avuOiMXSJ+6cc7mOmDgALlDG1A1717/9gmoJdHHPyt9vLuZRF/vIOZPggoUM6QBvTkpTNGz87Hv/7JHhH/NDq6JWLXR3rO9ENAgXKGNKDjH1Y6/vXfRxzaHf5yxCd7zvRDQIFyhjSgH+6YvTWgF0Zc0h2+MeL8njP9EFCgnCEN6Kh5WwN6SsSnu8N/iDip50w/BBQopyEB/YWI27rDOyIO7jnTDwEFymlIQPeOGH+z5/ciFvWceYyRHzzGOQIKFNOQgC6MGP/toZtmxPyeM4/xil6/Q++FxTYPqF1zAvpwd7gxYlbPmcd466Ldtzc7ji22eUDtGhLQ9gn7v3eH3434uZ4z/XhGnFps84DaNSSgh0Tc3h1+I+LAnjP9EFCgnIYE9JSIz3WHX4w4vudMPwQUKKchAb0w4k3d4VsjXt1zph8CCpTTkIB+OuKI7vDoiOt6zvRDQIFyGhLQzkeH3Dk6unvG1g8TmTjTDwEFymlIQDsfXvesde3luudGvHkHM30QUKCcpgT04WdGHPjGv3jDgRGHb9jBTB8EFCinKQFt/edR3UuJjvrPHc48MQEFymlMQFsb33fCkjlLTnjfpseZeUICCpQzzAGdBAIKlCOgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAto0m34wjawf9E8TnhQBbZpnxHRy9qB/nPBkCGjTvHD3qTAvFkzJ33PxoH+c8GQIKL2sjKsHvQkw/ASUXgQU+iCg9CKg0AcBpRcBhT4IKL0I6LD68bemxJem5q/56aB/nE+WgNKLgA6rgwf9zrOiTh/0j/PJElB6EdBh9d8Pmgq7xuKp+GuWv23QP84nS0Dp5a/3v23Qm8AA+R9onwQU2J6A9klAge0JaJ8EFMq45TPTxynxmkFvQkF3Td5OF1Ao4uODfkWbHZl976TtdQGFIq6Onz9h2jhiz+cOehPK2TW+Mml7XUCLGblx0Gcq7MDXJm2nb+PqWDkVfw077QgBLWUyA7pm0Ccq7Misuydtr28loMNKQIuZzIBOq1O4aWUyT+G23f8COpwEtJjJDagDaDhN5gG01dVxxtRcP85OepqAliKgNZqqgDKsBLQQAa2RgNZOQAsR0BoJaO0EtBABrZGA1k5ACxHQGglo7QS0EAGt0VQFdNep+AhNdto8AS1FQGs0VQG1/4eT94EWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAdqxffdySOXs/78oNW6fuPOeYvX7uqN/9Yv8rEdAaCWjdBLTthr27b+k66KvdmUdfOas7dep3+l2LgNZIQOsmoO1+zo5YsuLi0/ZoL7qfz//idjqPPufcX50R8bSH+1yNgNZIQOsmoK31SyJe8lB78L1TI84anfpcxIIbOoPb249NL+tzPQJaIwGtm4C2VkccvnF09OjyiPs6g1URbx+78W/bN/a5HgGtkYDWTUBbx0d8rDv8cMTqzvLEiFvGZh6I2K3P9QhojQS0bgLa2jdi/DeT3hNxZmd5esSnxmbujHhKn+sR0BoJaN0EtLUwYl13+EjEYZ3lX0SctHl0pn0yf06f6xHQGglo3QS0tTTi5u7w1oi9OsuNp0Uc/7nv//DGFRFP/36f6xHQGglo3QS0vZlxSXd4QcQuo4OfvnHO2NtAZ7xqXc87ffrFp29v9/i1ydi8UQ6gYSWgdRPQ1tqIuV8eHV0/M2LW6Gj96+eNBXTWqt5vpP/NXh+t+ozJ2LxRDqBhJaB1E9BW6xURs8+/7uZrz4iZ3dfcv//0iCOu/vyN72+fyu/+T73u850PPcbS+I1J2bwOB9CwEtC6CWirtfG87iPIBddG7NeeGDku4o/GXkT67Oz4mX/rbzWeA62RgNZNQDtuW7lswfxl5913V8TR7S+/GPHszd2b3hL9/tsV0BoJaN0EdFtfiDi7vXh7xBvHp74WcWh/dxbQGglo3QR0W1dEXNNeXBLx5+NTP+z7UiQBrZGA1k1AWzeuWtW9lHNkecy4v718Z8Rrxm/9fMQv9LceAa2RgNZNQFt3Rzx10+joUxGndJZ3ROx1/9iNm3894pX9rUdAaySgdRPQVuvIiHN+0l7etGfMuG105qSIZ93RGXzv9yPmfKO/1QhojQS0bgLaat2+S8TSsy88cWbE5WMzd+8TMev4P3j1yQsj4t19rkZAaySgdRPQtjV7jL0PdPalI92Zbx45fnXR7n/d71oEtEYCWjcB7XjwoucsWrj83K9vndl83ZlLd5m7z8nv7H0pfC8CWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlojAa2bgBYjoDUS0LoJaDECWiMBrZuAFiOgNRLQugloMQJaIwGtm4AWI6A1EtC6CWgxAlqjqQroaV+ZNr780UFvQUGHCmgpAlqjqQnoe4Jhdcuk7XUBLUZAh9XUBPRbxx4xFWYPOkZF7TolP7NTH560vS6gxQjosJqagE6RW66eClf+wVVT8de8755B/zifLAEtRkCH1bQKKENFQIsR0GEloEwWAS1GQIeVgDJZBLSYq+OYqXjaiJ12oIAySQS0mKsH/YomOySgTA4BLUZAh5eAMjkEtBgBHV4CyuQQ0GIEdHgJKJNDQIsR0OEloEwOAS3m6jh0JcNosYAySQS0GO8DHVbeB8pkEdBiBHRYCSiTRUCLEdBhJaBMFgEtRkCHlYAyWQS0GAEdVgLKZBHQYgR0WAkok0VAixHQYSWgTBYBLUZAh5WAMlkEtBgBHVYCymQR0GKm16+1/eSgt6Cgyfy1ttRNQIu5ZtAXfLNDk/drbambgBbzzWOm5Fe0To3FceCgN6GgF22YtL1O3QSUXlbG1YPeBBh+AkovAgp9EFB6EVDog4A2zZ0fmgonxMqp+Gs+dv+gf5zwZAho0+w56Fe0izpp0D9OeDIEtGmuOH0qnPCUX5+Sv+cjg/5xwpMhoABJAgqQJKAASQIKkCSgAEnNCej61cctmbP3867c5rLmB95x7M/PXfqrb/1x3ysRUKCcxgT0hr277xw86KvjUx9Z3J1afH2/axFQoJymBPSG2RFLVlx82h7txb1jUx+YEXHwyovOak/N/8c+VyOgQDkNCej6JREveag9+N6pEWeNTt09P2ZdNdIebHh5xKEj/a1HQIFyGhLQ1RGHbxwdPbo84r7OYEXE28ZuHDk8+v3IcQEFymlIQI+P+Fh3+OGI1e3FA7Nj0cPdqXvWrv2P/tYjoEA5DQnovhHdZz5b90Sc2V68N+J1O78eAQXKaUhAF0as6w4fiTisvVgV8YmdX4+AAuU0JKBLI27uDm+N2Ku9eHbE7Q9ddsyesxcd/Yb+P1RSQIFyGhLQl0Zc0h1eELFLe/GUiA/s0X0f6Pyret7p0cf+gtvlAgoU05CAro2Y++XR0fUzI2a1l4vaizjyXZ+96f2ntRP6jl53OqvXJ/geORmbB1SpIQFtvSJi9vnX3XztGdEO6G7tiQXtGK7ePHrbRyPm/GuP+7zvsb/fdkEcNymbB9SoKQHdeF73EeSCayP2a08sjnjZ+I2vjDi3v9V4DhQopykBbbVuW7lswfxl5913V8TRrdHnQNeO3/TFiF/sbyUCCpTTnICO+0LE2e3FCyIeGp/6wdhZfR8EFCineQG9IuKa9uJVEXeMT30zYt/+7iygQDkNCeiNq1Z1L+UcWR4zOu/7/Nuxjo66NuL5/a1HQIFyGhLQuyOeuml09KmIUzrLhxfGXt8du3Hd0rHL4/sgoEA5DQlo68iIc37SXt60Z8y4bXTmTRGHjb419I7nRuy/4fHuvJWAAuU0JaC37xKx9OwLT5wZcfnYzMNHRcx41spXHjsnYsGX+lyNgALlNCWgrTXd6zZnXzr+2ckPnjh+ddHyW/tdi4AC5TQmoK0HL3rOooXLz/361pmR689aumD+ASs+uLHvlQgoUE5zAlqEgALlCChAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkCShAkoACJAkoQJKAAiQ1J6DrVx+3ZM7ez7tyw3bzr46d+BsFFCinMQG9Ye8Yc9BXJ8z/TQgoMBhNCegNsyOWrLj4tD3ai3u3mb9zoYACA9KQgK5fEvGSh9qD750acdbW+Q2/FAIKDEhDAro64vCNo6NHl0fct2X+ZbHrTAEFBqMhAT0+4mPd4YcjVo9Pvzfiw/MEFBiMhgR034jxZz7viTizO7x9fry6JaDAgDQkoAsj1nWHj0QcNjZatyye+aiAAoPSkIAujbi5O7w1Yq/Rwcjpsdu3WgIKDEpDAvrSiEu6wwsidhkdrI74aOvxAvrXJzzGz8YJk7F5QJUaEtC1EXO/PDq6fmbErM7gpjnxms5yxwFdET08czI2D6hSQwLaekXE7POvu/naM6Id0N3aEw8cEL/yk84tOw7ojz/3me0tcwoPFNOUgG48r/sIcsG1Efu1WptPjt3vGb3Fc6DAgDQloK3WbSuXLZi/7Lz77oo4utW6KuK6sXkBBQakOQEd94WIs1ut12731Gaf34WAAuU0L6BXRFwjoMAQaEhAb1y1qnsp58jymHF/q/Xdb4ybE9H+70P9rUdAgXIaEtC7I566aXT0qYhTJtzkOVBgQBoS0NaREed03rV0054x47YJtwgoMCBNCejtu0QsPfvCE2dGXD7xFgEFBqQpAW2t2WPs1aLZl45MvEFAgQFpTEBbD170nEULl5/79e3nBRQYkOYEtAgBBcoRUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCAJAEFSBJQgCQBBUgSUIAkAQVIElCApOYEdP3q45bM2ft5V27YMnPfHz5r0ezdj3jtt/tfiYAC5TQmoDfsHWMO+mp35j3zujOz3rC537UIKFBOUwJ6w+yIJSsuPm2P9uLe0ZkPtdO5/0v+8CX7t5fn9bsaAQXKaUhA1y+JeMlD7cH3To04qzPzSHtmVed0/pHXtwv6+T7XI6BAOQ0J6OqIwzeOjh5dHnFfe/nBiKeOzbR+J+L0PtcjoEA5DQno8REf6w4/HLG6vVgZ8X+6M7dE7N3negQUKKchAd034t7u8J6IM9uL4yK+1p15NGJ+n+sRUKCchgR0YcS67vCRiMPai4te/OKfdGfubp/N97keAQXKaUhAl0bc3B3eGrHXxBsvjljZ53oEFCinIQF9acQl3eEFEbtMuO2Ts2NOz/fSP/CRD21vafzGZGweUKWGBHRtxNwvj46unxkxa5tbfvrmORF/1vNOvxU9PHMyNg+oUkMC2npFxOzzr7v52jOiHdDdtkyPrDkkYubbe9/n46c/xoH9v+ce4Ak0JaAbz+s+glxwbcR+47O3Pac98/SbH++OE50fO4gtwE5rSkDbsVy5bMH8Zefdd1fE0WMzD79uVsQBf75xJ1YioEA5zQnouC9EnD06uGtZxF7venSn7iygQDnNC+gVEdd0lvceEPHyB3fyzgIKlNOQgN64alX3Us6R5THj/vZy46Ex85qdXo+AAuU0JKCdi402jY4+FXFKZ/k3Ea/f+fUIKFBOQwLaOjLinM6lmzftGTNu60w8O+ase4L79CCgQDlNCejtu0QsPfvCE2dGXN75+tEZMe+obfS5GgEFymlKQFtr9hh7H+jsS0c6X35juwuM+lyLgALlNCagrQcves6ihcvP/frYV38noMCgNSegRQgoUI6AAiQJKECSgAIkCShAkoACJAkoQJKAAiQJKECSgAIkVRfQRQfRh91nzJ5DvWbN3GfQ/wSbYWFdAV3d6zcdA+TMWFu4UUMd0NY936IfZ8QFn6deL4q3DPqfYEN8p3Sihjug9GdlXD3oTWCA7P+BEdDpwAFUN/t/YAR0OnAA1c3+HxgBnQ4cQHWz/wdGQKcDB1Dd7P+BEdDpwAFUN/t/YAR0OnAA1c3+HxgBnQ4cQHWz/wdGQKcDB1Dd7P+BEdDpwAFUN/t/YAR0OnAA1c3+HxgBnQ4cQHWz/wdGQKcDB1Dd7P+BEdDpwAFUN/t/YAR0OnAA1c3+HxgBnQ4cQHWz/wdGQKcDB1Dd7P+BEdDp4H/EBwe9CQyQ/T8wAjod/OjvNg16Exgg+39gBBQgSUABkgQUIElAAZIEFCBJQAGSBBQgSUABkgQUIElAAZIEFCBJQAGSBBQgSUABkgQUIElAAZIEFCBJQAGSBBQgSUABkgQUIElAAZIEFCBJQAGSBBQgSUAbKLZYuOy3PzOyZf7+S49fMudnDvj1Kx8c4MZRwtZdHPs89/c+OfLE9xg3L+LYzRPWNK/41rGFgDZQTPCiH47Njlw5f0tX370TRxxDaOIujhN/0Pc92wGN/z1hTeMBfeAdx/783KW/+tYfF93SygloA0XM/N1RK47YpXN0jdXyj9rDJb95wdkndDr6lgFvIk/Oll38u//1iAXt/XlC3/9H7AR0wTe3XVM3oB9Z3K3x4utLb23FBLSBtjkr++7L20fEms7o5vbgjzd0Rt9pz8386qA2jhK2PfH+fmcf9x29TkDjmK0n8eNr+sCMiINXXnTWHhHz/7HgllZOQBto26Nr5OSI0zuD34k4vzu3+ZSIswexYZQy4ZnLTb8S8Xv93rMd0KURV26/prvnx6yrOg9jN7RzfKhneEoR0AaacHT9Q/uA6Sz3j/iX8bm17QcbU79ZlDPxpZ/VEc/u957tgP7fiF3u2m5NKyLeNjYxcnjEVwptJgLaQBOOrh9E/GxnOTfi0fG5Hx144PKp3yzKmRjQ6yOePjb65rnP2m/uPs982T91H0O2c9na9OfP23PespPXbN4y86qI526asKYHZseih7sz96xd+x9T8C3UQUAbaMLR9e2IfTvL9iPQzwxqgyhtYkD/MuLkznLzBTPHX5d/4ejT3Z1crntBxJ6d+RN+0p1prW+fxL99wpreG/G6qdz+aghoA004uv4q4sTO8rfaIf37QW0RhU0M6GsiLussr25n8hmv/l/nHNJeXjJ6SzuXL5x12Xdaj7yzPbq4O9NqtU/i5//LtmtaFfGJKf0GaiGgDTThJdp9It7bGXxtVvuoetr//OJPB7VVFDQhoF+bG3t1ro0Y+S8R7+icu49c2A7p6E3ztrxAf1nEYd2Z9n/bJ/FHb9pmTc+OuP2hy47Zc/aio99w/xR+H9OegDbQlqPrka//2V4RvzzWzM8sGj23+5mT//TWzY9zZ5ogYs43xnxlzfnzY/Hou9K+G3HI2HOfP4yYNTroPAIdu8e3u/8qxgK6/qCIP+2uqTP9lIgP7NE9+59/1RR/M9OZgDbQxKtUDr23O/3QNc+fOzZ1wJsfGOgG8mRN3MWnj+3OdWvWfGns5k2zYuzIbefyurGpzRMC2vp8O5R3jq2pM93+n+usOPJdn73p/ae11/eOKf1epjUBbaBtj62D37ztlXkbPnPxUZ1T+dj/1oFtHQVMDOjP/snEN24+dEVsDeidW+6ybUBbr4549qYt052rmVaPnZh8tP3o9l+n5JuogYA20Nbzu3/p8bEh6z5wavto2d1j0Cbb+hzopm+/f0nEpd2vRu74yGUv/5XR1+JHv5639c1r2wW0cxJ/xZbpxREvG1/3KyPOnYJvoQ4C2kBP+AE7Ny7ZelkSTTRhF391RiwefUVo/Rv3G3tIesiMrQHd7i5bZton8fO+sc1zoGvH/+AXI35x8r+DSghoA/UK6EnHH//I1q+uG3+VlmaauIuPj+i8irTuyM5zNmf+yZq7RnYYTRMAAAOlSURBVOY9cUA7J/FHbepOvyDiofE/+IOI3Sb9G6iFgDZQr4DuG7HN054/jPi5KdwgSpu4i1dGfLa9uDji0JvGZvoJaOck/vLu9Ksi7hj/g9/sXnpBAQLaQD0fgUa8aetXX3ExfLNN3MWvi/hge3HIlovY/z36CGjnJH7u/xub/tuIa8anr414/mRue1UEtIF6BfSaiDm3jH8x8tsRvz+lm0RZE3fxhWOfkbxHxLqxiSv6CmjnJP7IsemHF8Ze3x2bXLc0YvWkbnxNBLSBegX00WURC9/wo9Hx7WdGzP7nqd4qCpq4i9vn7n/YXhwT8YHOl5vf33kZfvRtFo8f0M5JfHf6TRGHfbkzuOO5EftvmPRvoBYC2kA9X4X/586FSHMOOWnF8w7uHDWuNmm0ibv4bWOfB/qO9uzLr7rmtb8Yc3eLOOk9m58ooJ3POuxOP3xUxIxnrXzlsXMiFnxpar6JGghoA/V+G9Ndz9/6zusD/daGZpu4i9dE7P6f7Uee/627ew9Ye3lnsfEJA9o6dzygrQdPHP/HsdxFFuUIaAPt4H2gI186/+i95s5Z/Izf/7hPFGm4ibv4R3PGLnkf+cQpy+YtfsG7HmltvnS/XZ+z6YkDuv7gLWsauf6spQvmH7DigxunYPurIaAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASQIKkCSgAEkCCpAkoABJAgqQJKAASf8fzMEnTDEEbwkAAAAASUVORK5CYII=" title alt width="672" /></p>
 </div>
