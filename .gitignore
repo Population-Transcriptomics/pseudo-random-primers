@@ -1,2 +1,4 @@
 MiSeq/*/*.fastq.gz
 .Rproj.user
+annotation/*.bed
+annotation/*.gtf.gz
