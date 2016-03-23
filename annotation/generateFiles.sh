@@ -39,3 +39,4 @@ zcat $GENCODE |
       if ($7=="-") {print $1,$4 - 100,$4 + 100,"TTS",0,$7}
     }' >> annot.bed
 
+md5sum -c md5sums.txt 
