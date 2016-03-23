@@ -13,6 +13,10 @@ the time of publication, but in the other branches, the files may evolve.
 
 ### Scripts and programs used in the data analysis:
 
+#### Supplemental file 1
+
+Selection of the pseudo-random primers.  [[HTML]](selection.html)
+
 #### Supplemental file 2
 
 General commands creating the files used in downstream analysis. [[HTML]](common_commands.html) [[Rmarkdown]](common_commands.Rmd)
