@@ -3,3 +3,11 @@ Moirai/NC*
 .Rproj.user
 annotation/*.bed
 annotation/*.gtf.gz
+*.l1.gz
+*.l2.annot
+*.l2.bed
+*.l2.genes
+*.l2.gz
+*_cache/
+*_files/
+
