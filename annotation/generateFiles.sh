@@ -22,8 +22,8 @@ zcat $GENCODE |
 zcat $GENCODE |
   grep -P '\tgene\t' |
   awk '{OFS="\t"} {
-      if ($7=="+") {print $1,$4 - 100,$4 + 100,"promoter",0,$7}
-      if ($7=="-") {print $1,$5 - 100,$5 + 100,"promoter",0,$7}
+      if ($7=="+") {print $1,$4 - 500,$4 + 500,"promoter",0,$7}
+      if ($7=="-") {print $1,$5 - 500,$5 + 500,"promoter",0,$7}
     }' >> annot.bed
 
 md5sum -c md5sums.txt 
