@@ -16,28 +16,28 @@ Analysis with R
 ### Configuration
 
 ```{r}
-library(oscR) #  See https://github.com/charles-plessy/oscR
-if (compareVersion(sessionInfo()$otherPkgs$oscR$Version,'0.1.1') < 0)
-  stop('Out of date oscR library')
-
-library(smallCAGEqc) # See https://github.com/charles-plessy/smallCAGEqc
-if (compareVersion(sessionInfo()$otherPkgs$smallCAGEqc$Version,'0.6.0') < 0)
-  stop('Out of date smallCAGEqc library')
-
-library(gdata)
+library(oscR)        # See https://github.com/charles-plessy/oscR for oscR.
+library(smallCAGEqc) # See https://github.com/charles-plessy/smallCAGEqc for smallCAGEqc.
 library(vegan)
 library(ggplot2)
+library(gdata)
+
+stopifnot(
+    packageVersion("oscR") >= "0.1.1"
+  , packageVersion("smallCAGEqc") > "0.10.0"
+)
 ```
 
 ### Load the data
 
 ```{r}
-libs_NC12 <- read.table("libs_NC12_1.txt", sep="\t", head=T)
-libs_NCki <- read.table("libs_NCki_1.txt", sep="\t", head=T)
-libs_NC17 <- read.table("libs_NC17_1.txt", sep="\t", head=T)
+libs_NC12 <- read.table("../Nc12_clean/libs_NC12_1.txt", sep="\t", head=T)
+libs_NCki <- read.table("../NCki_clean/libs_NCki_1.txt", sep="\t", head=T)
+libs_NC17 <- read.table("../NC17_clean/libs_NC17_1.txt", sep="\t", head=T)
 ```
 
 ### Merge 3 tables
+
 The data coming from the 3 experiments are merged in one table to analyzed them together
 
 ```{r}
@@ -47,7 +47,9 @@ rownames(libs_NC12) <- sub('NC12.', 'NC12_', rownames(libs_NC12))
 ```{r}
 libs <- rbind(libs_NC12, libs_NC17, libs_NCki)
 ```
+
 #### Add the celltype
+
 ```{r}
 libs$celltype <- libs$samplename
 libs$celltype <- sub('NC.._', '', libs$celltype)
@@ -181,9 +183,9 @@ Transcriptome analysis
 Load the data
 
 ```{r}
-g2_NC12 <- read.table('g2.sub1_NC12_1.txt', sep="\t", head=T)
-g2_NC17 <- read.table('g2.sub1_NC17_1.txt', sep="\t", head=T)
-g2_NCki <- read.table('g2.sub1_NCki_1.txt', sep="\t", head=T)
+g2_NC12 <- read.table('../Nc12_clean/g2.sub1_NC12_1.txt', sep="\t", head=T)
+g2_NC17 <- read.table('../NC17_clean/g2.sub1_NC17_1.txt', sep="\t", head=T)
+g2_NCki <- read.table('../NCki_clean/g2.sub1_NCki_1.txt', sep="\t", head=T)
 ```
 
 Create a new table
