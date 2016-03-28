@@ -9,5 +9,3 @@ annotation/*.gtf.gz
 *.l2.genes
 *.l2.gz
 *_cache/
-*_files/
-
