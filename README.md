@@ -13,34 +13,30 @@ the time of publication, but in the other branches, the files may evolve.
 
 ### Scripts and programs used in the data analysis:
 
-#### Supplemental file 1
+#### Selection of the pseudo-random primers.
 
-Selection of the pseudo-random primers.  [[HTML]](selection.html)
+This was supplemental file 1 in the manuscript [[HTML]](selection.html).
 
-#### Supplemental file 2
+#### Analysis of the first experiment, NCms10058.
 
-General commands creating the files used in downstream analysis. [[HTML]](common_commands.html) [[Rmarkdown]](common_commands.Rmd)
+This includes contents from supplemental files 2 and 3. [[Notebook]](NCki_clean/commandes_clean.md) [[R source]](NCki_clean/commandes_clean.Rmd)
 
-#### Supplemental file 3
+#### Analysis of the second experiment, NC12.
 
-Analysis of the first experiment, NCms10058. [[HTML]](NCki_clean/commandes_clean.html) [[Rmarkdown]](NCki_clean/commandes_clean.Rmd)
+This includes contents from supplemental files 2 and 4. [[Notebook]](Nc12_clean/commandes_clean.md) [[R source]](Nc12_clean/commandes_clean.Rmd)
 
-#### Supplemental file 4
+#### Analysis of the third experiment, NC17.
 
-Analysis of the second experiment, NC12. [[HTML]](Nc12_clean/commandes_clean.html) [[Rmarkdown]](Nc12_clean/commandes_clean.Rmd)
+This includes contents from supplemental files 2 and 5. [[Notebook]](NC17_clean/commandes_clean.md) [[R source]](NC17_clean/commandes_clean.Rmd)
 
-#### Supplemental file 5
+#### Common analysis of the three experiments.
 
-analysis of the third experiment, NC17. [[HTML]](NC17_clean/commandes_clean.html) [[Rmarkdown]](NC17_clean/commandes_clean.Rmd)
+This includes contents from supplemental files 2 and 6.  [[Notebook]](3_exp/command.md) [[R source]](3_exp/command.Rmd)
 
-#### Supplemental file 6
+#### Statistical analysis.
 
-Common analysis of the three experiments. [[HTML]](3_exp/command.html) [[RMarkdown]](3_exp/command.Rmd)
+This was supplemental file 7.  [[HTML]](3_exp/stat/stats.html) [[R source]](3_exp/stat/stats.Rmd)
 
-#### Supplemental file 7
+#### Analysis of the fourth experiment regarding the RNA extracted from blood, NC22.
 
-Statistical analysis. [[HTML]](3_exp/stat/stats.html) [[RMarkdown]](3_exp/stat/stats.Rmd)
-
-#### Supplemental file 8
-
-Analysis of the fourth experiment regarding the RNA extracted from blood, NC22. [[HTML]](NC22b_clean/commands_NC22.html) [[Rmarkdown]](NC22b_clean/commands_NC22.Rmd)
+This was supplemental file 8.  [[Notebook]](NC22b_clean/commands_NC22.md) [[R source]](NC22b_clean/commands_NC22.Rmd)
