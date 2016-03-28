@@ -1,23 +1,15 @@
----
-output: 
-  html_document: 
-    keep_md: yes
----
-```{r echo=FALSE}
-options(width=120)
-knitr::opts_knit$set(verbose = TRUE)
-knitr::opts_chunk$set(cache=TRUE)
-```
 
-Analyze of the first experiment: NCms10058
-==========================================
+
+Analyze of the second experiment: NC12
+======================================
 
 Cluster and annotate in the shell (not in R)
 --------------------------------------------
 
-```{r engine="bash"}
-LIBRARY=NCms10058_1
-BAMFILES=../Moirai/NCms10058_1.CAGEscan_short-reads.20150625154711/properly_paired_rmdup/*bam
+
+```bash
+LIBRARY=NC12_1
+BAMFILES=../Moirai/NC12_1.CAGEscan_short-reads.20150629125015/properly_paired_rmdup/*bam
 
 level1.py -o /dev/stdout -f 66 -F 516 $BAMFILES |
   bgzip > $LIBRARY.l1.gz
@@ -50,15 +42,29 @@ osc2bed $LIBRARY.l2.gz | tee $LIBRARY.l2.bed | bed2annot - > $LIBRARY.l2.annot
 bed2symbols $LIBRARY.l2.bed > $LIBRARY.l2.genes
 ```
 
+```
+## Opening NC12_1.l1.gz
+```
+
 Analysis with R
 ---------------
 
 ### Configuration
 
-```{r}
+
+```r
 library(oscR)        #  See https://github.com/charles-plessy/oscR for oscR.
 library(smallCAGEqc) # See https://github.com/charles-plessy/smallCAGEqc for smallCAGEqc.
 library(vegan)
+```
+
+```
+## Loading required package: permute
+## Loading required package: lattice
+## This is vegan 2.0-10
+```
+
+```r
 library(ggplot2)
 
 stopifnot(
@@ -66,33 +72,56 @@ stopifnot(
   , packageVersion("smallCAGEqc") > "0.10.0"
 )
 
-LIBRARY <- "NCms10058_1"
+LIBRARY <- "NC12_1"
 ```
 
 ### Load data
 
-```{r}
-l2_NCki <- read.osc(paste(LIBRARY,'l2','gz',sep='.'), drop.coord=T, drop.norm=T)
-colnames(l2_NCki) <- sub('raw.NCms10058_1.','NCki_',colnames(l2_NCki))
-colSums(l2_NCki)  
+
+```r
+l2_NC12 <- read.osc(paste(LIBRARY,'l2','gz',sep='.'), drop.coord=T, drop.norm=T)
+colnames(l2_NC12) <- sub('raw.NC12_1', 'NC12', colnames(l2_NC12))
+colSums(l2_NC12)
 ```
 
-### Normalization number of read per sample : l2.sub ; libs$genes.sub
+```
+##  NC12.HeLa_40N6_A  NC12.HeLa_40N6_B  NC12.HeLa_40N6_C    NC12.HeLa_PS_A    NC12.HeLa_PS_B    NC12.HeLa_PS_C 
+##             12154             17411             20790             24065             27215             54835 
+## NC12.HeLa_RanN6_A NC12.HeLa_RanN6_B NC12.HeLa_RanN6_C  NC12.THP1_40N6_A  NC12.THP1_40N6_B  NC12.THP1_40N6_C 
+##             10944             35582             23215              9271             15299             15775 
+##    NC12.THP1_PS_A    NC12.THP1_PS_B    NC12.THP1_PS_C NC12.THP1_RanN6_A NC12.THP1_RanN6_B NC12.THP1_RanN6_C 
+##             21303             23454             37395             13356             58890             34922
+```
+
+### Normalization number of read per sample: l2.sub ; libs$genes.sub
 
 In all the 3 libraries used, one contain only few reads tags. The smallest one has 8,708 counts. In order to make meaningful comparisons, all of them are subsapled to 8700 counts.
 
-```{r}
+
+```r
 set.seed(1)
-l2.sub1 <- t(rrarefy(t(l2_NCki),min(8700)))
+l2.sub1 <- t(rrarefy(t(l2_NC12),min(8700)))
 colSums(l2.sub1)
+```
+
+```
+##  NC12.HeLa_40N6_A  NC12.HeLa_40N6_B  NC12.HeLa_40N6_C    NC12.HeLa_PS_A    NC12.HeLa_PS_B    NC12.HeLa_PS_C 
+##              8700              8700              8700              8700              8700              8700 
+## NC12.HeLa_RanN6_A NC12.HeLa_RanN6_B NC12.HeLa_RanN6_C  NC12.THP1_40N6_A  NC12.THP1_40N6_B  NC12.THP1_40N6_C 
+##              8700              8700              8700              8700              8700              8700 
+##    NC12.THP1_PS_A    NC12.THP1_PS_B    NC12.THP1_PS_C NC12.THP1_RanN6_A NC12.THP1_RanN6_B NC12.THP1_RanN6_C 
+##              8700              8700              8700              8700              8700              8700
 ```
 
 ### Moirai statistics
 
 Load the QC data produced by the Moirai workflow with which the libraries were processed. Sort in the same way as the l1 and l2 tables, to allow for easy addition of columns.
 
-```{r}
-libs <- loadMoiraiStats(multiplex = "NCms10058_1.multiplex.txt", summary = "../Moirai/NCms10058_1.CAGEscan_short-reads.20150625154711/text/summary.txt", pipeline = "CAGEscan_short-reads")
+
+```r
+libs <- loadMoiraiStats(multiplex = "NC12_1.multiplex.txt", summary = "../Moirai/NC12_1.CAGEscan_short-reads.20150629125015/text/summary.txt", pipeline = "CAGEscan_short-reads")
+rownames(libs) <- sub('HeLa', 'NC12.HeLa', rownames(libs))
+rownames(libs) <- sub('THP1', 'NC12.THP1', rownames(libs))
 ```
 
 ### Number of clusters
@@ -102,51 +131,55 @@ this to the QC table.  Each subsampling will give a different result, but the
 mean result can be calculated by using the `rarefy` function at the same scale
 as the subsampling.
 
-```{r}
+
+```r
 libs["l2.sub1"]     <- colSums(l2.sub1 > 0)
-libs["l2.sub1.exp"] <- rarefy(t(l2_NCki), min(colSums(l2_NCki)))
+libs["l2.sub1.exp"] <- rarefy(t(l2_NC12), min(colSums(l2_NC12)))
 ```
 
 ### Richness
 
 Richness should also be calculated on the whole data.
 
-```{r NCki_boxplot, dev=c('png', 'svg')}
-libs["r100.l2"] <- rarefy(t(l2_NCki),100)
+
+```r
+libs["r100.l2"] <- rarefy(t(l2_NC12),100)
 boxplot(data=libs, r100.l2 ~ group, ylim=c(92,100), las=1)
 ```
+
+![](commandes_clean_files/figure-html/NC12_boxplot-1.png) 
 
 ### Hierarchical annotation
 
 Differences of sampling will not bias distort the distribution of reads between annotations, so the non-subsampled library is used here.
 
-```{r}
+
+```r
 annot.l2 <- read.table(paste(LIBRARY,'l2','annot',sep='.'), head=F, col.names=c('id', 'feature'), row.names=1)
 annot.l2 <- hierarchAnnot(annot.l2)
 
-rownames(libs) <- sub("HeLa", "NCki_HeLa", rownames(libs))
-rownames(libs) <- sub("THP1", "NCki_THP1", rownames(libs))
-
-libs <- cbind(libs, t(rowsum(l2_NCki,  annot.l2[,'class']))) 
-libs$samplename <- sub('HeLa', 'NCki_HeLa', libs$samplename)
-libs$samplename <- sub('THP1', 'NCki_THP1', libs$samplename)
+libs <- cbind(libs, t(rowsum(l2_NC12,  annot.l2[,'class']))) 
+libs$samplename <- sub('HeLa', 'NC12_HeLa', libs$samplename)
+libs$samplename <- sub('THP1', 'NC12_THP1', libs$samplename)
 ```
 
 ### Gene symbols used normalisation data
 
-```{r}
+
+```r
 genesymbols <- read.table(paste(LIBRARY,'l2','genes',sep='.'), col.names=c("cluster","symbol"), stringsAsFactors=FALSE)
 rownames(genesymbols) <- genesymbols$cluster
 
-g2 <- rowsum(l2_NCki, genesymbols$symbol)
+g2 <- rowsum(l2_NC12, genesymbols$symbol)
 countSymbols <- countSymbols(g2)
 
-libs[colnames(l2_NCki),"genes"] <- (countSymbols)
+libs[colnames(l2_NC12),"genes"] <- (countSymbols)
 ```
 
 Number of genes detected in sub-sample
 
-```{r}
+
+```r
 l2.sub1 <- data.frame(l2.sub1)
 g2.sub1 <- rowsum(l2.sub1, genesymbols$symbol)
 countSymbols.sub1 <- countSymbols(g2.sub1)
@@ -154,11 +187,13 @@ libs[colnames(l2.sub1),"genes.sub1"] <- (countSymbols.sub1)
 ```
 
 ### Table record
+
 save the different tables produced for later analysis
 
-```{r}
-write.table(l2_NCki, "l2_NCki_1.txt", sep = "\t", quote=FALSE)
-write.table(l2.sub1, "l2.sub1_NCki_1.txt", sep = "\t", quote=FALSE)
-write.table(g2.sub1, 'g2.sub1_NCki_1.txt', sep="\t", quote=F)
-write.table(libs, 'libs_NCki_1.txt', sep="\t", quote=F)
+
+```r
+write.table(l2_NC12, "l2_NC12_1.txt", sep = "\t", quote=FALSE)
+write.table(l2.sub1, "l2.sub1_NC12_1.txt", sep = "\t", quote=FALSE)
+write.table(g2.sub1, 'g2.sub1_NC12_1.txt', sep="\t", quote=F)
+write.table(libs, 'libs_NC12_1.txt', sep="\t", quote=F)
 ```
