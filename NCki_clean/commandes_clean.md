@@ -11,12 +11,7 @@ Cluster and annotate in the shell (not in R)
 LIBRARY=NCms10058_1
 BAMFILES=../Moirai/NCms10058_1.CAGEscan_short-reads.20150625154711/properly_paired_rmdup/*bam
 
-level1.py -o /dev/stdout -f 66 -F 516 $BAMFILES |
-  bgzip > $LIBRARY.l1.gz
-cat <(zgrep \# -A1 $LIBRARY.l1.gz) <(zgrep -v \# $LIBRARY.l1.gz | sed '1d' |
-  sort --field-separator $'\t' -k2.4,2n -k 2.4,2.4 -k3,3n -k4,4n -k5,5) |
-  bgzip |
-  sponge $LIBRARY.l1.gz
+level1.py -o $LIBRARY.l1.gz -f 66 -F 516 $BAMFILES 
 level2.py -t 0 -o $LIBRARY.l2.gz $LIBRARY.l1.gz
 
 function osc2bed {
@@ -138,7 +133,7 @@ Richness should also be calculated on the whole data.
 
 ```r
 libs["r100.l2"] <- rarefy(t(l2_NCki),100)
-boxplot(data=libs, r100.l2 ~ group, ylim=c(92,100), las=1)
+boxplot(data=libs, r100.l2 ~ group, ylim=c(80,100), las=1)
 ```
 
 ![](commandes_clean_files/figure-html/NCki_boxplot-1.png) 

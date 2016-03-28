@@ -23,12 +23,7 @@ Cluster and annotate in the shell (not in R)
 LIBRARY=NC22b
 BAMFILES=../Moirai/NC22b.CAGEscan_short-reads.20150625152335/properly_paired_rmdup/*bam
 
-level1.py -o /dev/stdout -f 66 -F 516 $BAMFILES |
-  bgzip > $LIBRARY.l1.gz
-cat <(zgrep \# -A1 $LIBRARY.l1.gz) <(zgrep -v \# $LIBRARY.l1.gz | sed '1d' |
-  sort --field-separator $'\t' -k2.4,2n -k 2.4,2.4 -k3,3n -k4,4n -k5,5) |
-  bgzip |
-  sponge $LIBRARY.l1.gz
+level1.py -o $LIBRARY.l1.gz -f 66 -F 516 $BAMFILES
 level2.py -t 0 -o $LIBRARY.l2.gz $LIBRARY.l1.gz
 
 function osc2bed {
