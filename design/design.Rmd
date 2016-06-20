@@ -1,11 +1,14 @@
 Selection of Pseudo-random primers
 ======================================
 
+## Reference files (human)
+
 ### rRNA
 
-Human:
-
-hsu13369.fasta file produced with the command extractfeat -type rRNA U13369.gb. (from the EMBOSS package)
+We extracted the human rRNA sequences from the reference locus
+[U13369](http://www.ncbi.nlm.nih.gov/nuccore/U13369) in a file called
+`hsu13369.fasta`, produced with the command `extractfeat -type rRNA U13369.gb`
+(from the [EMBOSS](http://emboss.sourceforge.net/) package).
 
 ```{r}
 HSU13369_3657_5527 [rRNA] Human ribosomal DNA complete repeating unit.
