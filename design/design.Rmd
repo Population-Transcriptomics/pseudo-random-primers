@@ -18,7 +18,7 @@ HSU13369_7935_12969 [rRNA] Human ribosomal DNA complete repeating unit.
 
 ### Mitochondrial
 
-We extracted human mitochontrial rRNA sequences in the same way, from the
+We extracted human mitochondrial rRNA sequences in the same way, from the
 reference locus [NC_012920](http://www.ncbi.nlm.nih.gov/nuccore/NC_012920).
 
 ```
@@ -28,7 +28,10 @@ NC_012920_1671_3229 [rRNA] Homo sapiens mitochondrion, complete genome.
 
 ### Combination
 
-```{r}
+The reference sequences were then reverse-complemented and combined in a
+plain text file with the following command.
+
+```
 (cat nc_012920.fasta hsu13369.fasta | revseq -filter | grep -v '>' | perl -pe chomp ; echo) > ribo.txt 
 ```
 
