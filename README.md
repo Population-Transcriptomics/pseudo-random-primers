@@ -15,7 +15,7 @@ the time of publication, but in the other branches, the files may evolve.
 
 #### Selection of the pseudo-random primers.
 
-This was supplemental file 1 in the manuscript [[HTML]](selection.html).
+This was supplemental file 1 in the manuscript [[Notebook]](design/design.md) [[R source]](design/design.Rmd).
 
 #### Analysis of the first experiment, NCms10058.
 
