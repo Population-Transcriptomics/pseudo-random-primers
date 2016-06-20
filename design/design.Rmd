@@ -10,7 +10,7 @@ We extracted the human rRNA sequences from the reference locus
 `hsu13369.fasta`, produced with the command `extractfeat -type rRNA U13369.gb`
 (from the [EMBOSS](http://emboss.sourceforge.net/) package).
 
-```{r}
+```
 HSU13369_3657_5527 [rRNA] Human ribosomal DNA complete repeating unit.
 HSU13369_6623_6779 [rRNA] Human ribosomal DNA complete repeating unit.
 HSU13369_7935_12969 [rRNA] Human ribosomal DNA complete repeating unit.
@@ -18,9 +18,10 @@ HSU13369_7935_12969 [rRNA] Human ribosomal DNA complete repeating unit.
 
 ### Mitochondrial
 
-Was extractfeat also used ? 
+We extracted human mitochontrial rRNA sequences in the same way, from the
+reference locus [NC_012920](http://www.ncbi.nlm.nih.gov/nuccore/NC_012920).
 
-```{r}
+```
 NC_012920_648_1601 [rRNA] Homo sapiens mitochondrion, complete genome.
 NC_012920_1671_3229 [rRNA] Homo sapiens mitochondrion, complete genome.
 ```
