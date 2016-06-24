@@ -48,7 +48,9 @@ but without barcode and fingerprints.
 LINKER <- 'CCCTATAAGATCGGAAGAGCGGTTCGGAGACCTTCAGTTCGACTA'
 ```
 
-Barcode sequences from Poulain _et al._, 2016 (in press).
+Barcode sequences from Poulain _et al._, 2016 (in press).  Note that when barcode
+sequences are introduced after the reverse-transcription, it is not necessary to filter
+them out.
 
 
 ```r
@@ -94,6 +96,11 @@ hexamers[matchHexamers(RIBO, 0),   "RIBO_0"]   <- TRUE
 hexamers[matchHexamers(RIBO, 1),   "RIBO_1"]   <- TRUE
 hexamers[BARCODES,                 "BARCODE"]  <- TRUE
 ```
+
+Here, barcodes are filtered out by matching row names directly, since in our nanoCAGE
+method they are hexamers.  Note that the `matchHexamers` function does not expect line
+breaks, so passing the a list of longer barcodes (like Illumina/Nextera indexes) will
+not produce the expected results.
 
 
 ```r

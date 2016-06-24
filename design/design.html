@@ -158,7 +158,7 @@ NC_012920_1671_3229 [rRNA] Homo sapiens mitochondrion, complete genome.</code></
 <h3>Selection in <code>R</code></h3>
 <p>Reverse-complement of the linker sequence from <a href="http://bmcgenomics.biomedcentral.com/articles/10.1186/1471-2164-14-665">Harbers <em>et al.</em>, 2013</a>, but without barcode and fingerprints.</p>
 <pre class="r"><code>LINKER &lt;- 'CCCTATAAGATCGGAAGAGCGGTTCGGAGACCTTCAGTTCGACTA'</code></pre>
-<p>Barcode sequences from Poulain <em>et al.</em>, 2016 (in press).</p>
+<p>Barcode sequences from Poulain <em>et al.</em>, 2016 (in press). Note that when barcode sequences are introduced after the reverse-transcription, it is not necessary to filter them out.</p>
 <pre class="r"><code>BARCODES &lt;- scan('barcodes.txt', what='character')</code></pre>
 <p>rRNA sequence (see above for details)</p>
 <pre class="r"><code>RIBO &lt;- scan('ribo.txt', what='character')</code></pre>
@@ -186,6 +186,7 @@ hexamers[matchHexamers(LINKER, 3), &quot;LINKER_3&quot;] &lt;- TRUE
 hexamers[matchHexamers(RIBO, 0),   &quot;RIBO_0&quot;]   &lt;- TRUE
 hexamers[matchHexamers(RIBO, 1),   &quot;RIBO_1&quot;]   &lt;- TRUE
 hexamers[BARCODES,                 &quot;BARCODE&quot;]  &lt;- TRUE</code></pre>
+<p>Here, barcodes are filtered out by matching row names directly, since in our nanoCAGE method they are hexamers. Note that the <code>matchHexamers</code> function does not expect line breaks, so passing the a list of longer barcodes (like Illumina/Nextera indexes) will not produce the expected results.</p>
 <pre class="r"><code>summary(hexamers)</code></pre>
 <pre><code>##   LINKER_0        LINKER_1        LINKER_2       LINKER_3         RIBO_0         RIBO_1       
 ##  Mode :logical   Mode :logical   Mode :logical   Mode:logical   Mode :logical   Mode:logical  
