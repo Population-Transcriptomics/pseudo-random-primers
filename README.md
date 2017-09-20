@@ -12,9 +12,11 @@ are available for download at <http://genome.gsc.riken.jp/plessy-20160322/plessy
 or from Zenodo [[FASTQ]](http://dx.doi.org/10.5281/zenodo.48112)
 [[BAM]](http://dx.doi.org/10.5281/zenodo.48114).
 
-The branch "BioTechniques-2016" contains the supplemental data in its state at
-the time of publication, but in the masater branch, the files have evolve for
-better formatting, and following questions from readers.
+The branch "[BioTechniques-2016](https://github.com/Population-Transcriptomics/pseudo-random-primers/tree/BioTechniques-2016)"
+contains the supplemental data in its state at
+the time of publication, but in the master branch, the files have evolved for
+better formatting, or following questions from readers, or following the
+needs to produce new figures for presentations.
 
 ### Scripts and programs used in the data analysis:
 
