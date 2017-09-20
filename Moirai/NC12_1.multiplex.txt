@@ -1,0 +1,1 @@
+../Nc12_clean/NC12_1.multiplex.txt
