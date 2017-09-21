@@ -137,6 +137,38 @@ dotsize=dotsize, stackdir='center') +
 p + theme(legend.position="none")
 ```
 
+
+```{r rRNA_new, dev=c('png', 'svg'), fig.height=3, fig.width=8}
+libm$group2 <- libm$group %>%
+  sub(pat=".*_", rep="") %>%
+  factor(labels = c("Random (only 40)", "Pseudo-random (40)", "Random (all 4096)"))
+libm$group3 <- libm$group %>% sub(pat="_.*", rep="")
+
+custom_theme <- theme( panel.background = element_rect(fill = "white", colour = NA)
+	     , panel.border = element_rect(fill = NA, colour = "grey20")
+	     , axis.text.x = element_text(size=13)
+	     , axis.text.y = element_text(size=13)
+	     , axis.title.y = element_text(size=14)
+	     , panel.grid.major.x = element_line(linetype = "dotted", colour = "grey90")
+	     , panel.grid.major.y = element_line(linetype = "solid", colour = "grey70"))
+
+ggplot(libm, aes(group2, rDNA * 100)) +
+  stat_summary( fun.y=mean
+              , fun.ymin=mean
+              , fun.ymax=mean
+              , geom="crossbar"
+              , color="gray") +
+  geom_jitter(width = 0, height = 0, aes(color = group3, alpha = 0.5), size = 3) +
+  custom_theme +
+  scale_y_continuous( limits=c(0,100)) +
+                    # , breaks =c(0, 20, 40, 60, 80)
+                    # , labels=c("0", "20", "40", "60", "80")) +
+  labs( y     = "% rRNA in libraries"
+      , x     = "Primer type"
+      , title = "Reduction of % rRNA by pseudo-random primers.") +
+  coord_flip() 
+```
+
 ### Numbers of genes: percentage
 
 ```{r}
@@ -177,6 +209,26 @@ dotsize=dotsize, stackdir='center') +
 p + theme(legend.position="none")
 ```
 
+
+```{r genes_number.sep_new, dev=c('png', 'svg'), fig.height=3, fig.width=8}
+genes_percentage$group2 <- genes_percentage$group %>%
+  sub(pat=".*_", rep="") %>%
+  factor(labels = c("Random (only 40)", "Pseudo-random (40)", "Random (all 4096)"))
+genes_percentage$group3 <- genes_percentage$group %>% sub(pat="_.*", rep="")
+
+ggplot(genes_percentage, aes(group2, genes_percentage)) +
+  stat_summary( fun.y=mean
+              , fun.ymin=mean
+              , fun.ymax=mean
+              , geom="crossbar"
+              , color="gray") +
+  geom_jitter(width = 0, height = 0, aes(color = group3, alpha = 0.5), size = 3) +
+  custom_theme +
+  labs( y    = "% of genes detected"
+      , x    = "Primer type"
+      , title = "Gene detection, relative to random primer controls.") +
+  coord_flip()
+```
 
 Transcriptome analysis
 -------------

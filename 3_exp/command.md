@@ -10,13 +10,26 @@ Analysis with R
 ```r
 library(oscR)        # See https://github.com/charles-plessy/oscR for oscR.
 library(smallCAGEqc) # See https://github.com/charles-plessy/smallCAGEqc for smallCAGEqc.
+```
+
+```
+## Loading required package: magrittr
+```
+
+```r
 library(vegan)
 ```
 
 ```
 ## Loading required package: permute
+```
+
+```
 ## Loading required package: lattice
-## This is vegan 2.0-10
+```
+
+```
+## This is vegan 2.4-2
 ```
 
 ```r
@@ -26,18 +39,37 @@ library(gdata)
 
 ```
 ## gdata: read.xls support for 'XLS' (Excel 97-2004) files ENABLED.
+```
+
+```
 ## 
+```
+
+```
 ## gdata: read.xls support for 'XLSX' (Excel 2007+) files ENABLED.
+```
+
+```
 ## 
 ## Attaching package: 'gdata'
-## 
+```
+
+```
 ## The following object is masked from 'package:stats':
 ## 
 ##     nobs
-## 
+```
+
+```
 ## The following object is masked from 'package:utils':
 ## 
 ##     object.size
+```
+
+```
+## The following object is masked from 'package:base':
+## 
+##     startsWith
 ```
 
 ```r
@@ -96,16 +128,7 @@ libs2$group <- factor(libs2$group)
 plotAnnot(libs2, 'all', 'pseudo-random primers') + theme_bw()
 ```
 
-```
-## Using group as id variables
-## Using group as id variables
-```
-
-```
-## Warning: Stacking not well defined when ymin != 0
-```
-
-![](command_files/figure-html/annotation.samplename-1.png) 
+![](command_files/figure-html/annotation.samplename-1.png)<!-- -->
 
 
 ```r
@@ -159,7 +182,7 @@ dotsize=dotsize, stackdir='center') +
 p + theme(legend.position="none")
 ```
 
-![](command_files/figure-html/artifact-1.png) 
+![](command_files/figure-html/artifact-1.png)<!-- -->
 
 
 ```r
@@ -179,7 +202,42 @@ dotsize=dotsize, stackdir='center') +
 p + theme(legend.position="none")
 ```
 
-![](command_files/figure-html/rRNA-1.png) 
+![](command_files/figure-html/rRNA-1.png)<!-- -->
+
+
+
+```r
+libm$group2 <- libm$group %>%
+  sub(pat=".*_", rep="") %>%
+  factor(labels = c("Random (only 40)", "Pseudo-random (40)", "Random (all 4096)"))
+libm$group3 <- libm$group %>% sub(pat="_.*", rep="")
+
+custom_theme <- theme( panel.background = element_rect(fill = "white", colour = NA)
+	     , panel.border = element_rect(fill = NA, colour = "grey20")
+	     , axis.text.x = element_text(size=13)
+	     , axis.text.y = element_text(size=13)
+	     , axis.title.y = element_text(size=14)
+	     , panel.grid.major.x = element_line(linetype = "dotted", colour = "grey90")
+	     , panel.grid.major.y = element_line(linetype = "solid", colour = "grey70"))
+
+ggplot(libm, aes(group2, rDNA * 100)) +
+  stat_summary( fun.y=mean
+              , fun.ymin=mean
+              , fun.ymax=mean
+              , geom="crossbar"
+              , color="gray") +
+  geom_jitter(width = 0, height = 0, aes(color = group3, alpha = 0.5), size = 3) +
+  custom_theme +
+  scale_y_continuous( limits=c(0,100)) +
+                    # , breaks =c(0, 20, 40, 60, 80)
+                    # , labels=c("0", "20", "40", "60", "80")) +
+  labs( y     = "% rRNA in libraries"
+      , x     = "Primer type"
+      , title = "Reduction of % rRNA by pseudo-random primers.") +
+  coord_flip() 
+```
+
+![](command_files/figure-html/rRNA_new-1.png)<!-- -->
 
 ### Numbers of genes: percentage
 
@@ -224,8 +282,31 @@ dotsize=dotsize, stackdir='center') +
 p + theme(legend.position="none")
 ```
 
-![](command_files/figure-html/genes_number.sep-1.png) 
+![](command_files/figure-html/genes_number.sep-1.png)<!-- -->
 
+
+
+```r
+genes_percentage$group2 <- genes_percentage$group %>%
+  sub(pat=".*_", rep="") %>%
+  factor(labels = c("Random (only 40)", "Pseudo-random (40)", "Random (all 4096)"))
+genes_percentage$group3 <- genes_percentage$group %>% sub(pat="_.*", rep="")
+
+ggplot(genes_percentage, aes(group2, genes_percentage)) +
+  stat_summary( fun.y=mean
+              , fun.ymin=mean
+              , fun.ymax=mean
+              , geom="crossbar"
+              , color="gray") +
+  geom_jitter(width = 0, height = 0, aes(color = group3, alpha = 0.5), size = 3) +
+  custom_theme +
+  labs( y    = "% of genes detected"
+      , x    = "Primer type"
+      , title = "Gene detection, relative to random primer controls.") +
+  coord_flip()
+```
+
+![](command_files/figure-html/genes_number.sep_new-1.png)<!-- -->
 
 Transcriptome analysis
 -------------
@@ -316,7 +397,7 @@ pairPanel <- function(dataframe, title)
 pairPanel(log(m2+1), 'pseudo-random primers')
 ```
 
-![](command_files/figure-html/corelation_plot-1.png) 
+![](command_files/figure-html/corelation_plot-1.png)<!-- -->
 
 
 ```r
@@ -359,7 +440,7 @@ Draw graphs
 plotFoldChangeGrays(u2, "HeLa - THP-1 fold changes")
 ```
 
-![](command_files/figure-html/foldchange1-1.png) 
+![](command_files/figure-html/foldchange1-1.png)<!-- -->
 
 
 ```r
@@ -368,4 +449,4 @@ plotFoldChange( u2, 'gray10', 0
               , xlab="Standard N6 random primers", ylab="Pseudo-random primers")
 ```
 
-![](command_files/figure-html/foldchange2-1.png) 
+![](command_files/figure-html/foldchange2-1.png)<!-- -->
