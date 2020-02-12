@@ -12,7 +12,7 @@ with rRNA sequences; and _Random (only 40)_: 40 hexamers selected completely
 randomly.
 
 This repository contains supplemental files related to our manuscript
-[published in BioTechniques](http://www.biotechniques.com/article/000114400):
+[published in BioTechniques](https://www.future-science.com/doi/10.2144/000114400):
 
 _Targeted reduction of highly abundant transcripts using pseudo-random primers._
 Ophélie Arnaud, Sachi Kato, Stéphane Poulain and Charles Plessy.
